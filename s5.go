@@ -24,7 +24,7 @@ var (
 	Commands = []string{"CONNECT", "BIND", "UDP ASSOCIATE"}
 	AddrType = []string{"", "IPv4", "", "Domain", "IPv6"}
 	Conns    = make([]io.ReadWriteCloser, 0)
-	Verbose  = true
+	Verbose  = false
 
 	errAddrType      = errors.New("socks addr type not supported")
 	errVer           = errors.New("socks version not supported")

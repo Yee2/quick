@@ -3,10 +3,10 @@ package main
 import (
 	"fmt"
 	"runtime"
-	"os"
 	"strings"
 	"strconv"
 	"time"
+	"path/filepath"
 )
 
 type Color string
@@ -30,12 +30,10 @@ func Show(c Color, format string, a ...interface{}) {
 
 func logf(format string, a ...interface{}) {
 	_, file, line, _ := runtime.Caller(1)
-	wd, _ := os.Getwd()
-	wd = strings.Replace(wd, "\\", "/", -1) + "/"
-	Show(ANSI_GREEN, "┌ %-34s%s ┐\n\n",
-		strings.TrimPrefix(file, wd)+":"+strconv.Itoa(line),
+	Show(ANSI_GREEN, "- %-34s%s -\n\n",
+		filepath.Base(file)+":"+strconv.Itoa(line),
 		time.Now().Format("15:04:05"),
 	)
 	Show(ANSI_YELLOW, format, a...)
-	Show(ANSI_GREEN, "\n└%s┘\n", strings.Repeat("-", 44))
+	Show(ANSI_GREEN, "\n-%s-\n", strings.Repeat("-", 44))
 }
