@@ -68,7 +68,6 @@ func createServerConfig(ca, crt, key string) (*tls.Config, error) {
 		return nil, err
 	}
 
-	logf("CA:%s\nCRT:%s\nkey:%s",ca,crt,key)
 	roots := x509.NewCertPool()
 	ok := roots.AppendCertsFromPEM(caCertPEM)
 	if !ok {

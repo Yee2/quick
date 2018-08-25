@@ -42,7 +42,7 @@ func Dial(config *tls.Config) (e error) {
 	if err != nil{
 		return err
 	}
-	logf("connect done.")
+	logf("dial done.")
 	defer session.Close()
 	listener, err := net.Listen("tcp", flags.Local)
 	if err != nil {
@@ -93,7 +93,6 @@ func createClientConfig(ca, crt, key string) (*tls.Config, error) {
 		panic("failed to parse root certificate")
 	}
 
-	logf("CA:%s\nCRT:%s\nkey:%s", ca, crt, key)
 	cert, err := tls.LoadX509KeyPair(crt, key)
 	if err != nil {
 		return nil, err
