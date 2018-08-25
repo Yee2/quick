@@ -15,6 +15,7 @@ var	flags = struct {
 		Local string
 		Address string
 		KeepAlive bool
+		Redirect bool
 	}{}
 // We start a server echoing data on the first stream the client opens,
 // then connect with a client, send the message, and wait for its receipt.

@@ -48,6 +48,10 @@ func Server()  {
 						logf("session closed by client")
 						break
 					}
+					if QuicError,ok := err.(*qerr.QuicError);ok && QuicError.ErrorCode == qerr.PeerGoingAway{
+						logf("session closed by client")
+						break
+					}
 					logf("error(%s):%s",reflect.TypeOf(err),err)
 					continue
 				}

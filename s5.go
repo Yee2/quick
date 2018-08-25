@@ -23,7 +23,6 @@ import (
 var (
 	Commands = []string{"CONNECT", "BIND", "UDP ASSOCIATE"}
 	AddrType = []string{"", "IPv4", "", "Domain", "IPv6"}
-	Conns    = make([]io.ReadWriteCloser, 0)
 	Verbose  = false
 
 	errAddrType      = errors.New("socks addr type not supported")
@@ -252,15 +251,7 @@ func pipeWhenClose(conn io.ReadWriteCloser, target string) {
 }
 
 func handleConnection(conn io.ReadWriteCloser) {
-	Conns = append(Conns, conn)
-	defer func() {
-		for i, c := range Conns {
-			if c == conn {
-				Conns = append(Conns[:i], Conns[i+1:]...)
-			}
-		}
-		conn.Close()
-	}()
+	defer conn.Close()
 	if err := handShake(conn); err != nil {
 		log.Println("socks handshake:", err)
 		return
