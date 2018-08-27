@@ -1,15 +1,15 @@
 package main
 
 import (
-	"net"
-	"io"
+	"context"
 	"crypto/tls"
-	"flag"
-	"io/ioutil"
 	"crypto/x509"
+	"flag"
+	"github.com/Yee2/quick/client"
+	"io"
+	"io/ioutil"
+	"net"
 	"reflect"
-	"github.com/lucas-clemente/quic-go"
-	"github.com/lucas-clemente/quic-go/qerr"
 )
 
 func Client() {
@@ -27,60 +27,49 @@ func Client() {
 
 	config, err := createClientConfig(flags.CA, flags.CRT, flags.Key)
 	if err != nil {
+		logf("Certificate error:%s", err)
+		return
+	}
+	manager, err := client.NewManager(flags.Server, config)
+	if err != nil {
 		logf("Unable to connect to remote server:%s", err)
 		return
 	}
-	for {
-		if err := Dial(config); err != nil {
-			logf("error(%s):%s", reflect.TypeOf(err), err)
-		}
+	if err = Listen(manager); err != nil {
+		logf("Unhandled error:%s", err)
+		return
 	}
 }
-func Dial(config *tls.Config) (e error) {
-	logf("start dial")
-	session, err := quic.DialAddr(flags.Server, config, &quic.Config{KeepAlive: true})
-	if err != nil{
-		return err
-	}
-	logf("dial done.")
-	defer session.Close()
+func Listen(session *client.Manager) (e error) {
 	listener, err := net.Listen("tcp", flags.Local)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	defer listener.Close()
-	//logf("Listening %s \n", flags.Local)
-	Redial := false
 	for {
+
 		conn, err := listener.Accept()
 		if err != nil {
-			if Redial {
-				return
-			}
 			logf("error(%s):%s", reflect.TypeOf(err), err)
 			continue
 		}
-		//logf("new client:%s \n", conn.RemoteAddr())
-		go func() {
-			if flags.Redirect {
-				err = direct(conn,session)
-			} else {
-				err = tunnel(conn, session)
-			}
+		go func(conn net.Conn) {
+			stream, err := session.NewStream()
 			if err != nil {
-				if QuicError, ok := err.(*qerr.QuicError); ok && QuicError.ErrorCode == qerr.PublicReset {
-					// 服务端重启过，客户端需要重新拨号
-					e = err
-					Redial = true
-					listener.Close()
-					return
-				}
-				logf("error(%s):%s", reflect.TypeOf(err), err)
+				e = err
+				//TODO: 处理错误，终止客户端运行
+				//cancel()
+				return
 			}
-		}()
+			if flags.Redirect {
+				err = direct(conn, stream)
+			} else {
+				err = tunnel(conn, stream)
+			}
+		}(conn)
 	}
-	return nil
 }
+
 func createClientConfig(ca, crt, key string) (*tls.Config, error) {
 	caCertPEM, err := ioutil.ReadFile(ca)
 	if err != nil {
@@ -103,28 +92,24 @@ func createClientConfig(ca, crt, key string) (*tls.Config, error) {
 	}, nil
 }
 
-func tunnel(client io.ReadWriteCloser, session quic.Session) (err error) {
-	defer client.Close()
-	stream, err := session.OpenStream()
-	if err != nil {
-		return err
-	}
-	defer stream.Close()
+func tunnel(left io.ReadWriteCloser, right io.ReadWriteCloser) (err error) {
+	defer right.Close()
+	defer left.Close()
+	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
-		_, e := io.Copy(client, stream)
-		if e != nil {
-			err = e
-		}
+		io.Copy(left, right)
+		cancel()
 	}()
-	_, e := io.Copy(stream, client)
-	if e != nil {
-		err = e
-	}
+	go func() {
+		io.Copy(right, left)
+		cancel()
+	}()
+	<-ctx.Done()
 	return
 }
 
-func die(err error){
-	if err != nil{
+func die(err error) {
+	if err != nil {
 		panic(err)
 	}
 }

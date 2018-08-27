@@ -37,6 +37,8 @@
 ```shell
     ./quick -c -redirect -addr localhost:4242 -ca ca.crt -crt client.crt -key client.key 
 ```
+### 问题
+发现QUIC单个对话并发数量过多会出现错误，只能通过创建新的会话解决.
 
 # 致谢
 

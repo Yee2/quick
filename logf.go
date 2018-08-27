@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"runtime"
 	"path/filepath"
+	"runtime"
 	"time"
 )
 

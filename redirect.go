@@ -3,14 +3,14 @@
 package main
 
 import (
-	"net"
-	"syscall"
-	"fmt"
-	"errors"
-	"io"
+	"context"
 	"encoding/binary"
+	"errors"
+	"fmt"
+	"io"
+	"net"
 	"strconv"
-	"github.com/lucas-clemente/quic-go"
+	"syscall"
 )
 
 const (
@@ -18,7 +18,7 @@ const (
 	IP6T_SO_ORIGINAL_DST = 80
 )
 
-func direct(conn net.Conn, session quic.Session) error {
+func direct(conn net.Conn, stream io.ReadWriteCloser) error {
 	defer conn.Close()
 	TCPConn, ok := conn.(*net.TCPConn)
 	if !ok {
@@ -29,37 +29,31 @@ func direct(conn net.Conn, session quic.Session) error {
 		return err
 	}
 	defer local.Close()
-	server, err := s5dialer(session, address)
+	server, err := s5dialer(stream, address)
 	if err != nil {
 		return err
 	}
 	defer server.Close()
+	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
-		_, e := io.Copy(local, server)
-		if e != nil {
-			err = e
-		}
+		io.Copy(local, server)
+		cancel()
 	}()
-	_, e := io.Copy(server, local)
-	if e != nil {
-		err = e
-	}
+	go func() {
+		io.Copy(server, local)
+		cancel()
+	}()
+	<-ctx.Done()
 	return err
 }
 
-func s5dialer(session quic.Session, target *net.TCPAddr) (stream quic.Stream, err error) {
+func s5dialer(stream io.ReadWriteCloser, target *net.TCPAddr) (Socks5Bind io.ReadWriteCloser, err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			err = fmt.Errorf("socks5 proxy error:%s", e)
-			if stream != nil {
-				stream.Close()
-				stream = nil
-			}
 		}
 	}()
 	var raw [1024]byte
-	stream, err = session.OpenStream()
-	die(err)
 	// handshake : client hello
 	stream.Write([]byte{0x05, 0x01, 0x00})
 	_, err = stream.Read(raw[:])
@@ -77,7 +71,7 @@ func s5dialer(session quic.Session, target *net.TCPAddr) (stream quic.Stream, er
 		die(err)
 	} else if ip := target.IP.To16(); ip != nil {
 		// 目标地址是 IPv6
-		_, err = stream.Write(append(append([]byte{0x05, 0x01, 0x00, 0x04},ip...),p...))
+		_, err = stream.Write(append(append([]byte{0x05, 0x01, 0x00, 0x04}, ip...), p...))
 		die(err)
 	} else {
 		panic(errors.New("wrong destination address"))
@@ -145,7 +139,7 @@ func getOriginalDstAddr(conn *net.TCPConn) (addr *net.TCPAddr, c *net.TCPConn, e
 	}
 
 	// only ipv4 support
-	addr = &net.TCPAddr{IP:mreq.Multiaddr[4:8],Port:int(mreq.Multiaddr[2])<<8 + int(mreq.Multiaddr[3])}
+	addr = &net.TCPAddr{IP: mreq.Multiaddr[4:8], Port: int(mreq.Multiaddr[2])<<8 + int(mreq.Multiaddr[3])}
 
 	cc, err := net.FileConn(fc)
 	if err != nil {
