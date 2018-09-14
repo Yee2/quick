@@ -4,47 +4,44 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"flag"
 	"github.com/Yee2/quick/client"
 	"io"
 	"io/ioutil"
 	"net"
 	"reflect"
+	"gopkg.in/urfave/cli.v2"
+	"errors"
 )
 
-func Client() {
-	var err error
-	flag.StringVar(&flags.CA, "ca", "ca.crt", "root certificate")
-	flag.StringVar(&flags.CRT, "crt", "client.crt", "client certificate")
-	flag.StringVar(&flags.Key, "key", "client.key", "client key")
-	flag.StringVar(&flags.Server, "addr", "", "host name or IP address of your remote server")
-	flag.StringVar(&flags.Local, "local", "0.0.0.0:1080", "local listening port")
-	flag.BoolVar(&flags.S, "s", false, "server mode")
-	flag.BoolVar(&flags.KeepAlive, "keep", false, "keep alive")
-	flag.BoolVar(&flags.Redirect, "redirect", false, "redirect")
-	flag.BoolVar(&flags.C, "c", false, "run as a client")
-	flag.Parse()
-
-	config, err := createClientConfig(flags.CA, flags.CRT, flags.Key)
+func Client(ctx *cli.Context) (err error) {
+	if ctx.String("remote") ==""{
+		err = errors.New("remote is required")
+		logf("%s", err)
+		return
+	}
+	config, err := createClientConfig(ctx.String("ca"), ctx.String("crt"), ctx.String("key"))
 	if err != nil {
 		logf("Certificate error:%s", err)
 		return
 	}
-	manager, err := client.NewManager(flags.Server, config)
+	manager, err := client.NewManager(ctx.String("remote"), config)
 	if err != nil {
 		logf("Unable to connect to remote server:%s", err)
 		return
 	}
-	if err = Listen(manager); err != nil {
+	logf("Successfully connected to a remote server:%s",ctx.String("remote"))
+	if err = Listen(ctx, manager); err != nil {
 		logf("Unhandled error:%s", err)
 		return
 	}
+	return nil
 }
-func Listen(session *client.Manager) (e error) {
-	listener, err := net.Listen("tcp", flags.Local)
+func Listen(ctx *cli.Context, session *client.Manager) (e error) {
+	listener, err := net.Listen("tcp", ctx.String("local"))
 	if err != nil {
 		return err
 	}
+	logf("Start listening:%s",ctx.String("local"))
 	defer listener.Close()
 	for {
 
@@ -61,7 +58,7 @@ func Listen(session *client.Manager) (e error) {
 				//cancel()
 				return
 			}
-			if flags.Redirect {
+			if ctx.Bool("redirect") {
 				err = direct(conn, stream)
 			} else {
 				err = tunnel(conn, stream)

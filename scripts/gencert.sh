@@ -1,4 +1,4 @@
-#/bin/sh
+#!/usr/bin/env bash
 if [ ! $1 ] 
 then
 	echo "${0} domain"
@@ -22,7 +22,7 @@ openssl req -new -nodes -key server.key -out server.csr -subj /C=CN/O="Quick Ser
 openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out server.crt
 
 # >>>>>>>>>>>>>>>>>> 客户端证书 <<<<<<<<<<<<<<<<<<<<<<
-# 生成客户端证书私钥: ca.key
+# 生成客户端证书私钥: client.key
 openssl genrsa -out client.key 2048
 
 # 生成客户端证书请求: client.csr

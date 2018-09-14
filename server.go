@@ -3,35 +3,28 @@ package main
 import (
 	"crypto/tls"
 	"crypto/x509"
-	"flag"
 	"io/ioutil"
 	"reflect"
 
 	"github.com/lucas-clemente/quic-go"
 	"github.com/lucas-clemente/quic-go/qerr"
+	"gopkg.in/urfave/cli.v2"
 )
 
-func Server() {
-	flag.StringVar(&flags.CA, "ca", "ca.crt", "root certificate")
-	flag.StringVar(&flags.CRT, "crt", "server.crt", "server certificate")
-	flag.StringVar(&flags.Key, "key", "server.key", "server key")
-	flag.StringVar(&flags.Address, "addr", "0.0.0.0:4242", "host name or IP address of your remote server")
-	flag.BoolVar(&flags.S, "s", false, "server mode")
-	flag.BoolVar(&flags.KeepAlive, "keep", false, "keep alive")
-	flag.BoolVar(&flags.C, "c", false, "run as a client")
-	flag.Parse()
-	config, err := createServerConfig(flags.CA, flags.CRT, flags.Key)
+func Server(ctx *cli.Context)(e error) {
+
+	config, err := createServerConfig(ctx.String("ca"), ctx.String("crt"), ctx.String("key"))
 	if err != nil {
 		logf("error:%s", err)
-		return
+		return err
 	}
-	listener, err := quic.ListenAddr(flags.Address, config, &quic.Config{KeepAlive: flags.KeepAlive})
+	listener, err := quic.ListenAddr(ctx.String("remote"), config, &quic.Config{KeepAlive: ctx.Bool("keep-alive")})
 	if err != nil {
 		logf("error:%s", err)
-		return
+		return err
 	}
 	defer listener.Close()
-	logf("listen at %s", flags.Address)
+	logf("listen at %s", ctx.String("remote"))
 	for {
 		session, err := listener.Accept()
 		if err != nil {
@@ -41,6 +34,7 @@ func Server() {
 		logf("new session from %s", session.RemoteAddr())
 		go severSessionHandle(session)
 	}
+	return nil
 }
 
 func severSessionHandle(session quic.Session) {

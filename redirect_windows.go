@@ -5,6 +5,7 @@ package main
 import (
 	"github.com/lucas-clemente/quic-go"
 	"net"
+	"errors"
 )
 
 func direct(conn net.Conn, _ quic.Session) error {

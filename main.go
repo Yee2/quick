@@ -1,53 +1,92 @@
 package main
 
 import (
-	"flag"
-	"fmt"
+	"gopkg.in/urfave/cli.v2"
 	"os"
+	"log"
 )
 
-var flags = struct {
-	CA        string
-	CRT       string
-	Key       string
-	S         bool
-	C         bool
-	Server    string
-	Local     string
-	Address   string
-	KeepAlive bool
-	Redirect  bool
-}{}
-
 func main() {
-	for i := range os.Args {
-		if os.Args[i] == "-s" {
-			Server()
-			return
-		} else if os.Args[i] == "-c" {
-			Client()
-			return
-		}
+	app := cli.App{
+		Name:"quick",
 	}
-	Usage()
-}
-
-func Usage() {
-	sHelp := flag.NewFlagSet("server mode", flag.ContinueOnError)
-	sHelp.String("ca", "ca.crt", "root certificate")
-	sHelp.String("crt", "server.crt", "certificate")
-	sHelp.String("key", "server.key", "key")
-	sHelp.String("addr", "0.0.0.0:4242", "host name or IP address of your remote server")
-	sHelp.Bool("s", false, "server mode")
-	sHelp.Bool("c", false, "run as a client")
-	sHelp.Usage()
-	fmt.Println()
-	cHelp := flag.NewFlagSet("client mode", flag.ContinueOnError)
-	cHelp.String("ca", "ca.crt", "root certificate")
-	cHelp.String("crt", "client.crt", "certificate")
-	cHelp.String("key", "client.key", "key")
-	cHelp.String("addr", "", "host name or IP address of your remote server")
-	cHelp.Bool("s", false, "server mode")
-	cHelp.Bool("c", false, "run as a client")
-	cHelp.Usage()
+	app.Version = "201809"
+	app.Flags = []cli.Flag{
+		&cli.StringFlag{
+			Name: "ca",
+			Value:"ca.crt",
+			Usage:"root certificate",
+		},
+		&cli.BoolFlag{
+			Name: "debug",
+			Aliases:[]string{"D"},
+			Value:true,
+			Usage:"debug mode",
+		},
+	}
+	app.Commands = []*cli.Command{
+		{
+			Name:    "server",
+			Aliases: []string{"s"},
+			Flags:   []cli.Flag{
+				&cli.StringFlag{
+					Name:"crt",
+					Value:"server.crt",
+					Usage:"server certificate",
+				},
+				&cli.StringFlag{
+					Name:"key",
+					Value:"server.key",
+					Usage:"server key",
+				},
+				&cli.StringFlag{
+					Name:"remote",
+					Value:"0.0.0.0:4242",
+					Usage:"host name or IP address of your remote server",
+				},
+				&cli.BoolFlag{
+					Name:"keep-alive",
+					Value:true,
+					Usage:"",
+				},
+			},
+			Action:  Server,
+		},
+		{
+			Name:    "client",
+			Aliases: []string{"c"},
+			Flags:   []cli.Flag{
+				&cli.StringFlag{
+					Name:"crt",
+					Value:"client.crt",
+					Usage:"client certificate",
+				},
+				&cli.StringFlag{
+					Name:"key",
+					Value:"client.key",
+					Usage:"client key",
+				},
+				&cli.StringFlag{
+					Name:"remote",
+					Value:"",
+					Usage:"host name or IP address of your remote server",
+				},
+				&cli.StringFlag{
+					Name:"local",
+					Value:"0.0.0.0:1080",
+					Usage:"local listening port",
+				},
+				&cli.BoolFlag{
+					Name:"redirect",
+					Value:false,
+					Usage:"redirect(experiment)",
+				},
+			},
+			Action:  Client,
+		},
+	}
+	err := app.Run(os.Args)
+	if err != nil {
+		log.Fatal(err)
+	}
 }

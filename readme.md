@@ -22,20 +22,20 @@
 ### 服务端
 拷贝`ca.crt` `server.crt` `server.key`文件到服务器上，运行下面命令：
 ```shell
-    ./quick -s -ca ca.crt -crt server.crt -key server.key 
+    ./quick server --ca ca.crt --crt server.crt --key server.key
 ```
 
 ### 客户端
 运行下面命令：
 ```shell
-    ./quick -c -addr localhost:4242 -ca ca.crt -crt client.crt -key client.key 
+    ./quick client --remote localhost:4242 --local 0.0.0.0:1080 --ca ca.crt --crt client.crt --key client.key 
 ```
 如果出现`dial done`客户端连接完成。
 
 ### 透明代理
-加上参数`-redirect`可以实现透明代理(只支持IPv4)：
+加上参数`--redirect`可以实现透明代理(只支持IPv4)：
 ```shell
-    ./quick -c -redirect -addr localhost:4242 -ca ca.crt -crt client.crt -key client.key 
+    ./quick client --redirect --remote localhost:4242 --local 0.0.0.0:1080 --ca ca.crt --crt client.crt --key client.key 
 ```
 ### 问题
 发现QUIC单个对话并发数量过多会出现错误，只能通过创建新的会话解决.
