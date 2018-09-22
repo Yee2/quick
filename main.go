@@ -24,6 +24,10 @@ func main() {
 			Usage:"debug mode",
 		},
 	}
+	app.Before = func(ctx *cli.Context) error {
+		debug = ctx.Bool("debug")
+		return nil
+	}
 	app.Commands = []*cli.Command{
 		{
 			Name:    "server",
